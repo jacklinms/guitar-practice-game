@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>吉他麥克風測試</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, "Noto Sans TC", sans-serif;
+      background: #111827;
+      color: white;
+    }
+
+    .container {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .card {
+      background: #1f2937;
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: #d1d5db;
+      line-height: 1.7;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 14px;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      background: #fbbf24;
+      color: #111827;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #ef4444;
+      color: white;
+    }
+
+    .meter-wrap {
+      width: 100%;
+      height: 36px;
+      background: #374151;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+
+    .meter {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #34d399, #fbbf24, #ef4444);
+      transition: width 0.08s linear;
+    }
+
+    .big-number {
+      font-size: 48px;
+      font-weight: bold;
+      margin-top: 16px;
+      color: #fbbf24;
+    }
+
+    .status {
+      margin-top: 12px;
+      color: #a7f3d0;
+      min-height: 24px;
+    }
+
+    .hint {
+      font-size: 14px;
+      color: #9ca3af;
+    }
+
+    .note-box {
+      height: 180px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #374151, #111827);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 72px;
+      font-weight: bold;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>吉他麥克風測試</h1>
+
+    <div class="card">
+      <p>
+        這一頁先測試手機或電腦是否能收到吉他聲。
+        按下「啟動麥克風」後，對著麥克風彈吉他，下面音量條應該會跳動。
+      </p>
+
+      <button onclick="startMic()">啟動麥克風</button>
+      <button class="secondary" onclick="stopMic()">停止麥克風</button>
+
+      <div class="meter-wrap">
+        <div class="meter" id="meter"></div>
+      </div>
+
+      <div class="big-number" id="volumeText">0%</div>
+      <div class="status" id="status">尚未啟動麥克風</div>
+      <p class="hint">
+        測試方式：彈一下空弦，音量條會瞬間上升。環境太吵時，之後需要做「最低音量門檻」。
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>下一步預告</h2>
+      <p>
+        音量測試成功後，我們會把這個畫面改成「空弦音練習」，
+        讓系統開始判斷 E、A、D、G、B、E。
+      </p>
+
+      <div class="note-box">E</div>
+    </div>
+  </div>
+
+  <script>
+    let audioContext = null;
+    let analyser = null;
+    let microphone = null;
+    let dataArray = null;
+    let animationId = null;
+    let stream = null;
+
+    async function startMic() {
+      const status = document.getElementById('status');
+
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          status.innerText = '這個瀏覽器不支援麥克風收音，請改用 Chrome 或 Safari 測試。';
+          return;
+        }
+
+        status.innerText = '請允許麥克風權限...';
+
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
+
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+
+        analyser.fftSize = 2048;
+
+        microphone = audioContext.createMediaStreamSource(stream);
+        microphone.connect(analyser);
+
+        dataArray = new Uint8Array(analyser.fftSize);
+
+        status.innerText = '麥克風已啟動，請彈吉他測試音量。';
+
+        updateVolume();
+
+      } catch (error) {
+        console.error(error);
+        status.innerText = '麥克風啟動失敗：' + error.message;
+      }
+    }
+
+    function updateVolume() {
+      analyser.getByteTimeDomainData(dataArray);
+
+      let sum = 0;
+
+      for (let i = 0; i < dataArray.length; i++) {
+        const value = dataArray[i] - 128;
+        sum += value * value;
+      }
+
+      const rms = Math.sqrt(sum / dataArray.length);
+
+      // 這裡把音量放大成比較容易看的百分比
+      const volume = Math.min(100, Math.round(rms * 4));
+
+      document.getElementById('meter').style.width = volume + '%';
+      document.getElementById('volumeText').innerText = volume + '%';
+
+      animationId = requestAnimationFrame(updateVolume);
+    }
+
+    function stopMic() {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      if (audioContext) {
+        audioContext.close();
+      }
+
+      document.getElementById('meter').style.width = '0%';
+      document.getElementById('volumeText').innerText = '0%';
+      document.getElementById('status').innerText = '麥克風已停止';
+    }
+  </script>
+</body>
+</html>
