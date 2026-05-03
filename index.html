@@ -302,6 +302,10 @@
     let lastSoundTime = 0;
     let lastHitSoundTime = 0;
 
+    let lastVolumePercent = 0;
+    let stableNoteName = '';
+    let stableFrameCount = 0;
+
     let notes = [];
     let particles = [];
     let lasers = [];
@@ -323,13 +327,15 @@
     let autoSubmitted = false;
 
     const MIC_SETTINGS = {
-      volumeScale: 900,       // 原本約 300，越大越容易看到音量
-      volumeGate: 2,          // 原本 4~8，越小越容易判斷
-      pitchRmsGate: 0.0025,   // 原本 0.01，越小越容易抓到音高
-      centsTolerance: 80,     // 原本 55，越大越容易判定為正確音
-      hitCooldown: 100,       // 原本 120~260，越小越容易連續觸發
-      hitWindow: 210          // 原本 140~190，越大越容易命中
-      };
+      volumeScale: 650,          // 不要太敏感
+      volumeGate: 6,             // 小噪音不判斷
+      pitchRmsGate: 0.006,       // 太小聲的音高不算
+      centsTolerance: 65,        // 音準容許範圍，初學者仍可接受
+      hitCooldown: 180,          // 避免同一個音連續觸發太快
+      hitWindow: 210,            // 命中區大小
+      attackGate: 5,             // 撥弦瞬間音量要有明顯上升
+      stableFramesRequired: 2    // 連續偵測到同一音，才算有效
+    };
       
     const openStrings = [
       { note: 'E2', display: 'E', label: '第 6 弦 E', freq: 82.41 },
@@ -529,10 +535,15 @@
 
       const volume = getVolume(buffer);
       const volumePercent = Math.min(100, Math.round(volume * MIC_SETTINGS.volumeScale));
+      const volumeDelta = volumePercent - lastVolumePercent;
 
       if (volumePercent < MIC_SETTINGS.volumeGate) {
         detectedNote = '-';
         detectedFrequency = 0;
+        stableNoteName = '';
+        stableFrameCount = 0;
+        lastVolumePercent = volumePercent;
+
         document.getElementById('detectedText').innerText = '-';
         document.getElementById('frequencyText').innerText = '聲音太小';
         micAnimationId = requestAnimationFrame(detectPitchLoop);
@@ -548,26 +559,45 @@
         detectedFrequency = pitch;
 
         if (cents <= MIC_SETTINGS.centsTolerance) {
-          detectedNote = closest.note;
-          lastSoundTime = performance.now();
+            detectedNote = closest.note;
+            lastSoundTime = performance.now();
 
-          document.getElementById('detectedText').innerText = closest.display;
-          document.getElementById('frequencyText').innerText =
-            closest.note + ' / ' + pitch.toFixed(1) + ' Hz';
+            if (stableNoteName === closest.note) {
+              stableFrameCount += 1;
+            } else {
+              stableNoteName = closest.note;
+              stableFrameCount = 1;
+            }
 
-          tryHitBySound(closest.note);
-        } else {
-          detectedNote = '?';
-          document.getElementById('detectedText').innerText = '?';
-          document.getElementById('frequencyText').innerText = pitch.toFixed(1) + ' Hz';
-        }
+            document.getElementById('detectedText').innerText = closest.display;
+            document.getElementById('frequencyText').innerText =
+              closest.note + ' / ' + pitch.toFixed(1) + ' Hz' +
+              '｜音量 ' + volumePercent +
+              '｜撥弦 +' + volumeDelta;
+
+            const isStableNote = stableFrameCount >= MIC_SETTINGS.stableFramesRequired;
+            const isPluckAttack = volumeDelta >= MIC_SETTINGS.attackGate;
+
+            if (isStableNote && isPluckAttack) {
+                    tryHitBySound(closest.note);
+                  }
+
+            } else {
+              detectedNote = '?';
+              stableNoteName = '';
+              stableFrameCount = 0;
+
+              document.getElementById('detectedText').innerText = '?';
+              document.getElementById('frequencyText').innerText =
+                pitch.toFixed(1) + ' Hz｜非空弦音';
+            }
       } else {
         detectedNote = '-';
         detectedFrequency = 0;
         document.getElementById('detectedText').innerText = '-';
         document.getElementById('frequencyText').innerText = '尚未穩定偵測';
       }
-
+      lastVolumePercent = volumePercent;
       micAnimationId = requestAnimationFrame(detectPitchLoop);
     }
 
