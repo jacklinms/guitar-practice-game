@@ -541,7 +541,6 @@
       const volumeDelta = volumePercent - lastVolumePercent;
       const now = performance.now();
 
-      // 判斷是否像吉他撥弦：音量有瞬間上升，而且音量不能太小
       const isAttack =
         volumePercent >= MIC_SETTINGS.minAttackVolume &&
         volumeDelta >= MIC_SETTINGS.attackGate;
@@ -598,8 +597,6 @@
 
           if (isStableNote && hasRecentAttack) {
             tryHitBySound(closest.note);
-
-            // 用掉這次撥弦，避免同一個殘響一直觸發
             lastAttackTime = 0;
           }
 
@@ -627,77 +624,6 @@
       lastVolumePercent = volumePercent;
       micAnimationId = requestAnimationFrame(detectPitchLoop);
     }
-      if (!analyser || !buffer || !audioContext) return;
-
-      analyser.getFloatTimeDomainData(buffer);
-
-      const volume = getVolume(buffer);
-      const volumePercent = Math.min(100, Math.round(volume * MIC_SETTINGS.volumeScale));
-      const volumeDelta = volumePercent - lastVolumePercent;
-
-      if (volumePercent < MIC_SETTINGS.volumeGate) {
-        detectedNote = '-';
-        detectedFrequency = 0;
-        stableNoteName = '';
-        stableFrameCount = 0;
-        lastVolumePercent = volumePercent;
-
-        document.getElementById('detectedText').innerText = '-';
-        document.getElementById('frequencyText').innerText = '聲音太小';
-        micAnimationId = requestAnimationFrame(detectPitchLoop);
-        return;
-      }
-
-      const pitch = autoCorrelate(buffer, audioContext.sampleRate);
-
-      if (pitch > 60 && pitch < 400) {
-        const closest = getClosestOpenString(pitch);
-        const cents = Math.abs(getCentsDifference(pitch, closest.freq));
-
-        detectedFrequency = pitch;
-
-        if (cents <= MIC_SETTINGS.centsTolerance) {
-            detectedNote = closest.note;
-            lastSoundTime = performance.now();
-
-            if (stableNoteName === closest.note) {
-              stableFrameCount += 1;
-            } else {
-              stableNoteName = closest.note;
-              stableFrameCount = 1;
-            }
-
-            document.getElementById('detectedText').innerText = closest.display;
-            document.getElementById('frequencyText').innerText =
-              closest.note + ' / ' + pitch.toFixed(1) + ' Hz' +
-              '｜音量 ' + volumePercent +
-              '｜撥弦 +' + volumeDelta;
-
-            const isStableNote = stableFrameCount >= MIC_SETTINGS.stableFramesRequired;
-            const isPluckAttack = volumeDelta >= MIC_SETTINGS.attackGate;
-
-            if (isStableNote && isPluckAttack) {
-                    tryHitBySound(closest.note);
-                  }
-
-            } else {
-              detectedNote = '?';
-              stableNoteName = '';
-              stableFrameCount = 0;
-
-              document.getElementById('detectedText').innerText = '?';
-              document.getElementById('frequencyText').innerText =
-                pitch.toFixed(1) + ' Hz｜非空弦音';
-            }
-      } else {
-        detectedNote = '-';
-        detectedFrequency = 0;
-        document.getElementById('detectedText').innerText = '-';
-        document.getElementById('frequencyText').innerText = '尚未穩定偵測';
-      }
-      lastVolumePercent = volumePercent;
-      micAnimationId = requestAnimationFrame(detectPitchLoop);
-    
 
     function getVolume(input) {
       let sum = 0;
