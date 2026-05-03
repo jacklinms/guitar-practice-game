@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>吉他麥克風測試</title>
+  <title>吉他空弦練習</title>
 
   <style>
     body {
@@ -14,7 +14,7 @@
     }
 
     .container {
-      max-width: 560px;
+      max-width: 620px;
       margin: 0 auto;
       padding: 24px;
     }
@@ -30,6 +30,10 @@
     h1 {
       font-size: 28px;
       margin-bottom: 8px;
+    }
+
+    h2 {
+      margin-top: 0;
     }
 
     p {
@@ -51,13 +55,73 @@
     }
 
     button.secondary {
+      background: #60a5fa;
+      color: white;
+    }
+
+    button.danger {
       background: #ef4444;
       color: white;
     }
 
+    .target-box {
+      height: 180px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, #374151, #111827);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-top: 16px;
+    }
+
+    .target-note {
+      font-size: 82px;
+      font-weight: bold;
+      color: #fbbf24;
+      line-height: 1;
+    }
+
+    .target-label {
+      margin-top: 12px;
+      color: #d1d5db;
+      font-size: 18px;
+    }
+
+    .detected {
+      font-size: 36px;
+      font-weight: bold;
+      color: #a7f3d0;
+      margin-top: 12px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .info {
+      background: #111827;
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .info-title {
+      color: #9ca3af;
+      font-size: 13px;
+    }
+
+    .info-value {
+      font-size: 26px;
+      font-weight: bold;
+      margin-top: 6px;
+    }
+
     .meter-wrap {
       width: 100%;
-      height: 36px;
+      height: 30px;
       background: #374151;
       border-radius: 999px;
       overflow: hidden;
@@ -71,13 +135,6 @@
       transition: width 0.08s linear;
     }
 
-    .big-number {
-      font-size: 48px;
-      font-weight: bold;
-      margin-top: 16px;
-      color: #fbbf24;
-    }
-
     .status {
       margin-top: 12px;
       color: #a7f3d0;
@@ -89,52 +146,107 @@
       color: #9ca3af;
     }
 
-    .note-box {
-      height: 180px;
-      border-radius: 16px;
-      background: linear-gradient(180deg, #374151, #111827);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 72px;
+    .success {
+      color: #34d399;
       font-weight: bold;
-      margin-top: 16px;
+    }
+
+    .miss {
+      color: #f87171;
+      font-weight: bold;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 12px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid #374151;
+      text-align: left;
+    }
+
+    th {
+      color: #fbbf24;
     }
   </style>
 </head>
 
 <body>
   <div class="container">
-    <h1>吉他麥克風測試</h1>
+    <h1>吉他空弦練習</h1>
+    <p>第 2 版：開始判斷吉他空弦音。請先調音，然後依照畫面提示彈出正確空弦。</p>
 
     <div class="card">
-      <p>
-        這一頁先測試手機或電腦是否能收到吉他聲。
-        按下「啟動麥克風」後，對著麥克風彈吉他，下面音量條應該會跳動。
-      </p>
+      <h2>目前目標</h2>
+
+      <div class="target-box">
+        <div class="target-note" id="targetNote">E</div>
+        <div class="target-label" id="targetLabel">第 6 弦低音 E</div>
+      </div>
 
       <button onclick="startMic()">啟動麥克風</button>
-      <button class="secondary" onclick="stopMic()">停止麥克風</button>
+      <button class="danger" onclick="stopMic()">停止麥克風</button>
+      <button class="secondary" onclick="resetGame()">重新開始練習</button>
+
+      <div class="status" id="status">尚未啟動麥克風</div>
 
       <div class="meter-wrap">
         <div class="meter" id="meter"></div>
       </div>
 
-      <div class="big-number" id="volumeText">0%</div>
-      <div class="status" id="status">尚未啟動麥克風</div>
       <p class="hint">
-        測試方式：彈一下空弦，音量條會瞬間上升。環境太吵時，之後需要做「最低音量門檻」。
+        建議：一開始先用單音撥弦，不要刷和弦。彈完等音稍微衰減，再彈下一個音。
       </p>
     </div>
 
     <div class="card">
-      <h2>下一步預告</h2>
-      <p>
-        音量測試成功後，我們會把這個畫面改成「空弦音練習」，
-        讓系統開始判斷 E、A、D、G、B、E。
-      </p>
+      <h2>即時偵測</h2>
 
-      <div class="note-box">E</div>
+      <div class="detected" id="detectedNote">尚未偵測</div>
+
+      <div class="info-grid">
+        <div class="info">
+          <div class="info-title">頻率</div>
+          <div class="info-value" id="frequencyText">0 Hz</div>
+        </div>
+
+        <div class="info">
+          <div class="info-title">音量</div>
+          <div class="info-value" id="volumeText">0%</div>
+        </div>
+
+        <div class="info">
+          <div class="info-title">分數</div>
+          <div class="info-value" id="scoreText">0</div>
+        </div>
+
+        <div class="info">
+          <div class="info-title">連擊</div>
+          <div class="info-value" id="comboText">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>空弦對照表</h2>
+
+      <table>
+        <tr>
+          <th>弦</th>
+          <th>音名</th>
+          <th>標準頻率</th>
+        </tr>
+        <tr><td>第 6 弦</td><td>E2</td><td>82.41 Hz</td></tr>
+        <tr><td>第 5 弦</td><td>A2</td><td>110.00 Hz</td></tr>
+        <tr><td>第 4 弦</td><td>D3</td><td>146.83 Hz</td></tr>
+        <tr><td>第 3 弦</td><td>G3</td><td>196.00 Hz</td></tr>
+        <tr><td>第 2 弦</td><td>B3</td><td>246.94 Hz</td></tr>
+        <tr><td>第 1 弦</td><td>E4</td><td>329.63 Hz</td></tr>
+      </table>
     </div>
   </div>
 
@@ -142,16 +254,39 @@
     let audioContext = null;
     let analyser = null;
     let microphone = null;
-    let dataArray = null;
+    let buffer = null;
     let animationId = null;
     let stream = null;
+
+    let score = 0;
+    let combo = 0;
+    let currentIndex = 0;
+    let lastHitTime = 0;
+
+    const targets = [
+      { note: 'E2', display: 'E', label: '第 6 弦低音 E', freq: 82.41 },
+      { note: 'A2', display: 'A', label: '第 5 弦 A', freq: 110.00 },
+      { note: 'D3', display: 'D', label: '第 4 弦 D', freq: 146.83 },
+      { note: 'G3', display: 'G', label: '第 3 弦 G', freq: 196.00 },
+      { note: 'B3', display: 'B', label: '第 2 弦 B', freq: 246.94 },
+      { note: 'E4', display: 'E', label: '第 1 弦高音 E', freq: 329.63 }
+    ];
+
+    const allNotes = [
+      { note: 'E2', freq: 82.41 },
+      { note: 'A2', freq: 110.00 },
+      { note: 'D3', freq: 146.83 },
+      { note: 'G3', freq: 196.00 },
+      { note: 'B3', freq: 246.94 },
+      { note: 'E4', freq: 329.63 }
+    ];
 
     async function startMic() {
       const status = document.getElementById('status');
 
       try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          status.innerText = '這個瀏覽器不支援麥克風收音，請改用 Chrome 或 Safari 測試。';
+          status.innerText = '這個瀏覽器不支援麥克風收音，請改用 Chrome 或 Safari。';
           return;
         }
 
@@ -168,16 +303,17 @@
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         analyser = audioContext.createAnalyser();
 
-        analyser.fftSize = 2048;
+        analyser.fftSize = 4096;
 
         microphone = audioContext.createMediaStreamSource(stream);
         microphone.connect(analyser);
 
-        dataArray = new Uint8Array(analyser.fftSize);
+        buffer = new Float32Array(analyser.fftSize);
 
-        status.innerText = '麥克風已啟動，請彈吉他測試音量。';
+        status.innerText = '麥克風已啟動，請依照目標彈空弦。';
 
-        updateVolume();
+        updateTarget();
+        detectLoop();
 
       } catch (error) {
         console.error(error);
@@ -185,25 +321,175 @@
       }
     }
 
-    function updateVolume() {
-      analyser.getByteTimeDomainData(dataArray);
+    function detectLoop() {
+      analyser.getFloatTimeDomainData(buffer);
 
-      let sum = 0;
+      const volume = getVolume(buffer);
+      const volumePercent = Math.min(100, Math.round(volume * 300));
 
-      for (let i = 0; i < dataArray.length; i++) {
-        const value = dataArray[i] - 128;
-        sum += value * value;
+      document.getElementById('meter').style.width = volumePercent + '%';
+      document.getElementById('volumeText').innerText = volumePercent + '%';
+
+      // 音量太小時不判斷，避免環境噪音亂跳
+      if (volumePercent < 8) {
+        document.getElementById('detectedNote').innerText = '聲音太小';
+        document.getElementById('frequencyText').innerText = '0 Hz';
+        animationId = requestAnimationFrame(detectLoop);
+        return;
       }
 
-      const rms = Math.sqrt(sum / dataArray.length);
+      const pitch = autoCorrelate(buffer, audioContext.sampleRate);
 
-      // 這裡把音量放大成比較容易看的百分比
-      const volume = Math.min(100, Math.round(rms * 4));
+      if (pitch > 60 && pitch < 400) {
+        const closest = getClosestOpenString(pitch);
+        const target = targets[currentIndex];
+        const cents = getCentsDifference(pitch, target.freq);
 
-      document.getElementById('meter').style.width = volume + '%';
-      document.getElementById('volumeText').innerText = volume + '%';
+        document.getElementById('frequencyText').innerText = pitch.toFixed(1) + ' Hz';
 
-      animationId = requestAnimationFrame(updateVolume);
+        if (closest) {
+          document.getElementById('detectedNote').innerText =
+            closest.note + ' / ' + closest.freq.toFixed(2) + ' Hz';
+        }
+
+        // 容許誤差：大約正負 45 cents
+        if (Math.abs(cents) <= 45) {
+          const now = Date.now();
+
+          // 避免同一個音持續響時一直加分
+          if (now - lastHitTime > 900) {
+            hitTarget();
+            lastHitTime = now;
+          }
+        }
+      } else {
+        document.getElementById('detectedNote').innerText = '尚未穩定偵測';
+        document.getElementById('frequencyText').innerText = '0 Hz';
+      }
+
+      animationId = requestAnimationFrame(detectLoop);
+    }
+
+    function getVolume(input) {
+      let sum = 0;
+
+      for (let i = 0; i < input.length; i++) {
+        sum += input[i] * input[i];
+      }
+
+      return Math.sqrt(sum / input.length);
+    }
+
+    function autoCorrelate(input, sampleRate) {
+      const size = input.length;
+      let rms = 0;
+
+      for (let i = 0; i < size; i++) {
+        rms += input[i] * input[i];
+      }
+
+      rms = Math.sqrt(rms / size);
+
+      if (rms < 0.01) {
+        return -1;
+      }
+
+      let bestOffset = -1;
+      let bestCorrelation = 0;
+
+      const minFreq = 60;
+      const maxFreq = 400;
+
+      const minOffset = Math.floor(sampleRate / maxFreq);
+      const maxOffset = Math.floor(sampleRate / minFreq);
+
+      for (let offset = minOffset; offset <= maxOffset; offset++) {
+        let correlation = 0;
+
+        for (let i = 0; i < size - offset; i++) {
+          correlation += input[i] * input[i + offset];
+        }
+
+        correlation = correlation / (size - offset);
+
+        if (correlation > bestCorrelation) {
+          bestCorrelation = correlation;
+          bestOffset = offset;
+        }
+      }
+
+      if (bestOffset === -1) {
+        return -1;
+      }
+
+      return sampleRate / bestOffset;
+    }
+
+    function getClosestOpenString(freq) {
+      let closest = null;
+      let smallestDiff = Infinity;
+
+      allNotes.forEach(item => {
+        const diff = Math.abs(getCentsDifference(freq, item.freq));
+
+        if (diff < smallestDiff) {
+          smallestDiff = diff;
+          closest = item;
+        }
+      });
+
+      return closest;
+    }
+
+    function getCentsDifference(freq, targetFreq) {
+      return 1200 * Math.log2(freq / targetFreq);
+    }
+
+    function hitTarget() {
+      const target = targets[currentIndex];
+
+      score += 100 + combo * 10;
+      combo += 1;
+
+      document.getElementById('status').innerHTML =
+        '<span class="success">命中！你彈對了 ' + target.label + '</span>';
+
+      currentIndex += 1;
+
+      if (currentIndex >= targets.length) {
+        currentIndex = 0;
+        document.getElementById('status').innerHTML =
+          '<span class="success">完成一輪空弦練習！繼續挑戰下一輪。</span>';
+      }
+
+      updateTarget();
+      updateScore();
+    }
+
+    function updateTarget() {
+      const target = targets[currentIndex];
+
+      document.getElementById('targetNote').innerText = target.display;
+      document.getElementById('targetLabel').innerText = target.label;
+    }
+
+    function updateScore() {
+      document.getElementById('scoreText').innerText = score;
+      document.getElementById('comboText').innerText = combo;
+    }
+
+    function resetGame() {
+      score = 0;
+      combo = 0;
+      currentIndex = 0;
+      lastHitTime = 0;
+
+      updateTarget();
+      updateScore();
+
+      document.getElementById('status').innerText = '已重新開始，請從第 6 弦低音 E 開始。';
+      document.getElementById('detectedNote').innerText = '尚未偵測';
+      document.getElementById('frequencyText').innerText = '0 Hz';
     }
 
     function stopMic() {
