@@ -422,6 +422,11 @@
         });
 
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+        }
+
         analyser = audioContext.createAnalyser();
         analyser.fftSize = 4096;
 
@@ -515,7 +520,7 @@
       const volume = getVolume(buffer);
       const volumePercent = Math.min(100, Math.round(volume * 300));
 
-      if (volumePercent < 8) {
+      if (volumePercent < 4) {
         detectedNote = '-';
         detectedFrequency = 0;
         document.getElementById('detectedText').innerText = '-';
@@ -648,10 +653,10 @@
 
       const now = performance.now();
 
-      if (now - lastHitSoundTime < 260) return;
+      if (now - lastHitSoundTime < 120) return;
 
       const hitLineY = H - 105;
-      const hitWindow = 140;
+      const hitWindow = 190;
 
       let targetIndex = -1;
       let bestDistance = Infinity;
