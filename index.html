@@ -191,6 +191,8 @@
       <button onclick="startMic()">啟動麥克風</button>
       <button class="danger" onclick="stopMic()">停止麥克風</button>
       <button class="secondary" onclick="resetGame()">重新開始練習</button>
+      <button class="secondary" onclick="submitScore()">送出成績到 Google Sheets</button>
+      <div class="status" id="submitStatus"></div>
 
       <div class="status" id="status">尚未啟動麥克風</div>
 
@@ -280,6 +282,8 @@
       { note: 'B3', freq: 246.94 },
       { note: 'E4', freq: 329.63 }
     ];
+
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzbe3rli1GFhLEWa-w5CVTdUGaoh2JEr7vwiuk3P67orZKaHVOmeJgI8ULUOMG5rpi5/exec';
 
     async function startMic() {
       const status = document.getElementById('status');
@@ -509,6 +513,86 @@
       document.getElementById('volumeText').innerText = '0%';
       document.getElementById('status').innerText = '麥克風已停止';
     }
+    function submitScore() {
+  if (score <= 0) {
+    document.getElementById('submitStatus').innerText = '目前還沒有分數，請先完成練習。';
+    return;
+  }
+
+  const name = prompt('請輸入學生姓名');
+  if (!name) return;
+
+  const className = prompt('請輸入班級，例如：週六吉他班');
+  if (!className) return;
+
+  const studentId = prompt('請輸入 Email 或學號');
+  if (!studentId) return;
+
+  document.getElementById('submitStatus').innerText = '成績送出中...';
+
+  jsonpRequest('saveScore', {
+    studentId: studentId,
+    name: name,
+    className: className,
+    level: '空弦音練習',
+    score: score,
+    accuracy: 100,
+    maxCombo: combo,
+    avgReactionTime: 0,
+    wrongNotes: ''
+  }, function(response) {
+    document.getElementById('submitStatus').innerText = '成績已送出到 Google Sheets！';
+  }, function(error) {
+    document.getElementById('submitStatus').innerText = '送出失敗：' + error;
+  });
+}
+
+function jsonpRequest(action, params, success, failure) {
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes('貼上')) {
+    failure('尚未設定 Apps Script 網址');
+    return;
+  }
+
+  const callbackName = 'callback_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+
+  params.action = action;
+  params.callback = callbackName;
+
+  const query = Object.keys(params)
+    .map(function(key) {
+      return encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
+    })
+    .join('&');
+
+  const script = document.createElement('script');
+  script.src = APPS_SCRIPT_URL + '?' + query;
+
+  const timer = setTimeout(function() {
+    cleanup();
+    failure('連線逾時');
+  }, 10000);
+
+  window[callbackName] = function(data) {
+    cleanup();
+    success(data);
+  };
+
+  script.onerror = function() {
+    cleanup();
+    failure('無法連接 Apps Script');
+  };
+
+  function cleanup() {
+    clearTimeout(timer);
+    delete window[callbackName];
+
+    if (script.parentNode) {
+      script.parentNode.removeChild(script);
+    }
+  }
+
+  document.body.appendChild(script);
+}
   </script>
 </body>
 </html>
