@@ -322,6 +322,15 @@
     let startTime = 0;
     let autoSubmitted = false;
 
+    const MIC_SETTINGS = {
+      volumeScale: 900,       // 原本約 300，越大越容易看到音量
+      volumeGate: 2,          // 原本 4~8，越小越容易判斷
+      pitchRmsGate: 0.0025,   // 原本 0.01，越小越容易抓到音高
+      centsTolerance: 80,     // 原本 55，越大越容易判定為正確音
+      hitCooldown: 100,       // 原本 120~260，越小越容易連續觸發
+      hitWindow: 210          // 原本 140~190，越大越容易命中
+      };
+      
     const openStrings = [
       { note: 'E2', display: 'E', label: '第 6 弦 E', freq: 82.41 },
       { note: 'A2', display: 'A', label: '第 5 弦 A', freq: 110.00 },
@@ -417,7 +426,8 @@
           audio: {
             echoCancellation: false,
             noiseSuppression: false,
-            autoGainControl: false
+            autoGainControl: true,
+            channelCount: 1
           }
         });
 
@@ -428,7 +438,7 @@
         }
 
         analyser = audioContext.createAnalyser();
-        analyser.fftSize = 4096;
+        analyser.fftSize = 8192;
 
         microphone = audioContext.createMediaStreamSource(stream);
         microphone.connect(analyser);
@@ -518,9 +528,9 @@
       analyser.getFloatTimeDomainData(buffer);
 
       const volume = getVolume(buffer);
-      const volumePercent = Math.min(100, Math.round(volume * 300));
+      const volumePercent = Math.min(100, Math.round(volume * MIC_SETTINGS.volumeScale));
 
-      if (volumePercent < 4) {
+      if (volumePercent < MIC_SETTINGS.volumeGate) {
         detectedNote = '-';
         detectedFrequency = 0;
         document.getElementById('detectedText').innerText = '-';
@@ -537,7 +547,7 @@
 
         detectedFrequency = pitch;
 
-        if (cents <= 55) {
+        if (cents <= MIC_SETTINGS.centsTolerance) {
           detectedNote = closest.note;
           lastSoundTime = performance.now();
 
@@ -581,7 +591,7 @@
 
       rms = Math.sqrt(rms / size);
 
-      if (rms < 0.01) return -1;
+      if (rms < MIC_SETTINGS.pitchRmsGate) return -1;
 
       let bestOffset = -1;
       let bestCorrelation = 0;
@@ -653,10 +663,10 @@
 
       const now = performance.now();
 
-      if (now - lastHitSoundTime < 120) return;
+      if (now - lastHitSoundTime < MIC_SETTINGS.hitCooldown) return;
 
       const hitLineY = H - 105;
-      const hitWindow = 190;
+      const hitWindow = MIC_SETTINGS.hitWindow;
 
       let targetIndex = -1;
       let bestDistance = Infinity;
