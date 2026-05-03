@@ -3,48 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>吉他空弦練習</title>
+  <title>Guitar Shooter 空弦挑戰</title>
 
   <style>
     body {
       margin: 0;
       font-family: Arial, "Noto Sans TC", sans-serif;
-      background: #111827;
+      background: radial-gradient(circle at top, #1f2937, #030712);
       color: white;
     }
 
     .container {
-      max-width: 620px;
+      max-width: 760px;
       margin: 0 auto;
-      padding: 24px;
-    }
-
-    .card {
-      background: #1f2937;
-      border-radius: 20px;
-      padding: 20px;
-      margin-bottom: 18px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      padding: 18px;
     }
 
     h1 {
       font-size: 28px;
-      margin-bottom: 8px;
-    }
-
-    h2 {
-      margin-top: 0;
+      margin: 10px 0 6px;
     }
 
     p {
       color: #d1d5db;
-      line-height: 1.7;
+      line-height: 1.6;
+    }
+
+    .card {
+      background: rgba(31, 41, 55, 0.92);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 6px;
+      color: #d1d5db;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      font-size: 16px;
     }
 
     button {
       width: 100%;
-      margin-top: 14px;
-      padding: 14px;
+      margin-top: 10px;
+      padding: 13px;
       border: none;
       border-radius: 12px;
       background: #fbbf24;
@@ -54,91 +67,69 @@
       cursor: pointer;
     }
 
-    button.secondary {
+    button.blue {
       background: #60a5fa;
       color: white;
     }
 
-    button.danger {
+    button.red {
       background: #ef4444;
       color: white;
     }
 
-    .target-box {
-      height: 180px;
+    button.green {
+      background: #34d399;
+      color: #111827;
+    }
+
+    .game-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 9 / 13;
+      max-height: 680px;
+      background: #020617;
       border-radius: 20px;
-      background: linear-gradient(180deg, #374151, #111827);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      margin-top: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
     }
 
-    .target-note {
-      font-size: 82px;
-      font-weight: bold;
-      color: #fbbf24;
-      line-height: 1;
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
     }
 
-    .target-label {
-      margin-top: 12px;
-      color: #d1d5db;
-      font-size: 18px;
-    }
-
-    .detected {
-      font-size: 36px;
-      font-weight: bold;
-      color: #a7f3d0;
-      margin-top: 12px;
-    }
-
-    .info-grid {
+    .hud {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-top: 16px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 12px;
     }
 
-    .info {
+    .hud-box {
       background: #111827;
       border-radius: 14px;
-      padding: 14px;
+      padding: 10px;
+      text-align: center;
     }
 
-    .info-title {
+    .hud-title {
       color: #9ca3af;
-      font-size: 13px;
+      font-size: 12px;
     }
 
-    .info-value {
-      font-size: 26px;
+    .hud-value {
+      font-size: 22px;
       font-weight: bold;
-      margin-top: 6px;
-    }
-
-    .meter-wrap {
-      width: 100%;
-      height: 30px;
-      background: #374151;
-      border-radius: 999px;
-      overflow: hidden;
-      margin-top: 16px;
-    }
-
-    .meter {
-      width: 0%;
-      height: 100%;
-      background: linear-gradient(90deg, #34d399, #fbbf24, #ef4444);
-      transition: width 0.08s linear;
+      color: #fbbf24;
+      margin-top: 4px;
     }
 
     .status {
-      margin-top: 12px;
       color: #a7f3d0;
       min-height: 24px;
+      margin-top: 10px;
+      line-height: 1.5;
     }
 
     .hint {
@@ -146,147 +137,189 @@
       color: #9ca3af;
     }
 
-    .success {
-      color: #34d399;
+    .detected {
+      font-size: 22px;
       font-weight: bold;
+      color: #a7f3d0;
+      margin-top: 8px;
     }
 
-    .miss {
-      color: #f87171;
-      font-weight: bold;
-    }
+    @media (max-width: 560px) {
+      .hud {
+        grid-template-columns: repeat(2, 1fr);
+      }
 
-    table {
-      width: 100%;
-      margin-top: 12px;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-
-    th, td {
-      padding: 8px;
-      border-bottom: 1px solid #374151;
-      text-align: left;
-    }
-
-    th {
-      color: #fbbf24;
+      h1 {
+        font-size: 24px;
+      }
     }
   </style>
 </head>
 
 <body>
   <div class="container">
-    <h1>吉他空弦練習</h1>
-    <p>第 2 版：開始判斷吉他空弦音。請先調音，然後依照畫面提示彈出正確空弦。</p>
+    <h1>Guitar Shooter 空弦挑戰</h1>
+    <p>音符掉到命中線附近時，彈出對應空弦。彈對會爆炸加分，漏掉會扣生命值。</p>
 
     <div class="card">
-      <h2>目前目標</h2>
+      <label>姓名</label>
+      <input id="studentName" placeholder="例如：小明">
 
-      <div class="target-box">
-        <div class="target-note" id="targetNote">E</div>
-        <div class="target-label" id="targetLabel">第 6 弦低音 E</div>
+      <label>班級</label>
+      <input id="className" placeholder="例如：週六吉他班">
+
+      <label>Email 或學號</label>
+      <input id="studentId" placeholder="例如：student@gmail.com">
+
+      <button onclick="saveStudentInfo()">儲存學生資料</button>
+      <div class="status" id="studentStatus">尚未儲存學生資料</div>
+    </div>
+
+    <div class="card">
+      <div class="game-wrap">
+        <canvas id="gameCanvas"></canvas>
       </div>
 
-      <button onclick="startMic()">啟動麥克風</button>
-      <button class="danger" onclick="stopMic()">停止麥克風</button>
-      <button class="secondary" onclick="resetGame()">重新開始練習</button>
-      <button class="secondary" onclick="submitScore()">送出成績到 Google Sheets</button>
+      <div class="hud">
+        <div class="hud-box">
+          <div class="hud-title">分數</div>
+          <div class="hud-value" id="scoreText">0</div>
+        </div>
+        <div class="hud-box">
+          <div class="hud-title">Combo</div>
+          <div class="hud-value" id="comboText">0</div>
+        </div>
+        <div class="hud-box">
+          <div class="hud-title">生命</div>
+          <div class="hud-value" id="lifeText">5</div>
+        </div>
+        <div class="hud-box">
+          <div class="hud-title">偵測音</div>
+          <div class="hud-value" id="detectedText">-</div>
+        </div>
+      </div>
+
+      <div class="detected" id="frequencyText">尚未偵測</div>
+      <div class="status" id="gameStatus">請先啟動麥克風，再開始遊戲。</div>
       <div class="status" id="submitStatus"></div>
 
-      <div class="status" id="status">尚未啟動麥克風</div>
-
-      <div class="meter-wrap">
-        <div class="meter" id="meter"></div>
-      </div>
+      <button onclick="startMic()">啟動麥克風</button>
+      <button class="green" onclick="startGame()">開始遊戲</button>
+      <button class="blue" onclick="resetGame()">重新開始</button>
+      <button class="red" onclick="stopMic()">停止麥克風</button>
+      <button class="blue" onclick="submitScore()">送出成績到 Google Sheets</button>
 
       <p class="hint">
-        建議：一開始先用單音撥弦，不要刷和弦。彈完等音稍微衰減，再彈下一個音。
+        小提示：這版有「命中線」設計，音符靠近底部亮線時再彈會比較容易命中。
+        如果要用鍵盤測試，也可以按 E / A / D / G / B。
       </p>
-    </div>
-
-    <div class="card">
-      <h2>即時偵測</h2>
-
-      <div class="detected" id="detectedNote">尚未偵測</div>
-
-      <div class="info-grid">
-        <div class="info">
-          <div class="info-title">頻率</div>
-          <div class="info-value" id="frequencyText">0 Hz</div>
-        </div>
-
-        <div class="info">
-          <div class="info-title">音量</div>
-          <div class="info-value" id="volumeText">0%</div>
-        </div>
-
-        <div class="info">
-          <div class="info-title">分數</div>
-          <div class="info-value" id="scoreText">0</div>
-        </div>
-
-        <div class="info">
-          <div class="info-title">連擊</div>
-          <div class="info-value" id="comboText">0</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>空弦對照表</h2>
-
-      <table>
-        <tr>
-          <th>弦</th>
-          <th>音名</th>
-          <th>標準頻率</th>
-        </tr>
-        <tr><td>第 6 弦</td><td>E2</td><td>82.41 Hz</td></tr>
-        <tr><td>第 5 弦</td><td>A2</td><td>110.00 Hz</td></tr>
-        <tr><td>第 4 弦</td><td>D3</td><td>146.83 Hz</td></tr>
-        <tr><td>第 3 弦</td><td>G3</td><td>196.00 Hz</td></tr>
-        <tr><td>第 2 弦</td><td>B3</td><td>246.94 Hz</td></tr>
-        <tr><td>第 1 弦</td><td>E4</td><td>329.63 Hz</td></tr>
-      </table>
     </div>
   </div>
 
   <script>
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzbe3rli1GFhLEWa-w5CVTdUGaoh2JEr7vwiuk3P67orZKaHVOmeJgI8ULUOMG5rpi5/exec';
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let W = 0;
+    let H = 0;
+
     let audioContext = null;
     let analyser = null;
     let microphone = null;
     let buffer = null;
-    let animationId = null;
     let stream = null;
+    let micAnimationId = null;
+    let gameAnimationId = null;
+
+    let detectedNote = '-';
+    let detectedFrequency = 0;
+    let lastSoundTime = 0;
+    let lastHitSoundTime = 0;
+
+    let notes = [];
+    let particles = [];
+    let lasers = [];
 
     let score = 0;
     let combo = 0;
-    let currentIndex = 0;
-    let lastHitTime = 0;
+    let maxCombo = 0;
+    let life = 5;
+    let hits = 0;
+    let misses = 0;
+    let gameRunning = false;
+    let gameOver = false;
+    let lastSpawnTime = 0;
+    let spawnInterval = 1450;
+    let baseSpeed = 120;
+    let startTime = 0;
 
-    const targets = [
-      { note: 'E2', display: 'E', label: '第 6 弦低音 E', freq: 82.41 },
+    const openStrings = [
+      { note: 'E2', display: 'E', label: '第 6 弦 E', freq: 82.41 },
       { note: 'A2', display: 'A', label: '第 5 弦 A', freq: 110.00 },
       { note: 'D3', display: 'D', label: '第 4 弦 D', freq: 146.83 },
       { note: 'G3', display: 'G', label: '第 3 弦 G', freq: 196.00 },
       { note: 'B3', display: 'B', label: '第 2 弦 B', freq: 246.94 },
-      { note: 'E4', display: 'E', label: '第 1 弦高音 E', freq: 329.63 }
+      { note: 'E4', display: 'E', label: '第 1 弦 E', freq: 329.63 }
     ];
 
-    const allNotes = [
-      { note: 'E2', freq: 82.41 },
-      { note: 'A2', freq: 110.00 },
-      { note: 'D3', freq: 146.83 },
-      { note: 'G3', freq: 196.00 },
-      { note: 'B3', freq: 246.94 },
-      { note: 'E4', freq: 329.63 }
-    ];
+    window.onload = function() {
+      resizeCanvas();
+      loadStudentInfo();
+      updateHud();
+      drawStartScreen();
+    };
 
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzbe3rli1GFhLEWa-w5CVTdUGaoh2JEr7vwiuk3P67orZKaHVOmeJgI8ULUOMG5rpi5/exec';
+    window.onresize = function() {
+      resizeCanvas();
+      drawStartScreen();
+    };
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.floor(rect.width * window.devicePixelRatio);
+      canvas.height = Math.floor(rect.height * window.devicePixelRatio);
+      ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+      W = rect.width;
+      H = rect.height;
+    }
+
+    function saveStudentInfo() {
+      const name = document.getElementById('studentName').value.trim();
+      const className = document.getElementById('className').value.trim();
+      const studentId = document.getElementById('studentId').value.trim();
+
+      if (!name || !className || !studentId) {
+        document.getElementById('studentStatus').innerText = '請填寫姓名、班級、Email 或學號。';
+        return;
+      }
+
+      localStorage.setItem('guitarShooterStudent', JSON.stringify({
+        name,
+        className,
+        studentId
+      }));
+
+      document.getElementById('studentStatus').innerText = '已儲存學生資料：' + name;
+    }
+
+    function loadStudentInfo() {
+      const saved = localStorage.getItem('guitarShooterStudent');
+      if (!saved) return;
+
+      const student = JSON.parse(saved);
+      document.getElementById('studentName').value = student.name || '';
+      document.getElementById('className').value = student.className || '';
+      document.getElementById('studentId').value = student.studentId || '';
+
+      if (student.name) {
+        document.getElementById('studentStatus').innerText = '已載入學生資料：' + student.name;
+      }
+    }
 
     async function startMic() {
-      const status = document.getElementById('status');
+      const status = document.getElementById('gameStatus');
 
       try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -306,7 +339,6 @@
 
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         analyser = audioContext.createAnalyser();
-
         analyser.fftSize = 4096;
 
         microphone = audioContext.createMediaStreamSource(stream);
@@ -314,31 +346,91 @@
 
         buffer = new Float32Array(analyser.fftSize);
 
-        status.innerText = '麥克風已啟動，請依照目標彈空弦。';
-
-        updateTarget();
-        detectLoop();
+        status.innerText = '麥克風已啟動，可以開始遊戲。';
+        detectPitchLoop();
 
       } catch (error) {
-        console.error(error);
         status.innerText = '麥克風啟動失敗：' + error.message;
       }
     }
 
-    function detectLoop() {
+    function startGame() {
+      if (!analyser) {
+        document.getElementById('gameStatus').innerText = '請先啟動麥克風。';
+        return;
+      }
+
+      resetGame();
+      gameRunning = true;
+      gameOver = false;
+      startTime = performance.now();
+      lastSpawnTime = 0;
+
+      document.getElementById('gameStatus').innerText = '遊戲開始！音符靠近命中線時請彈對應空弦。';
+
+      if (gameAnimationId) cancelAnimationFrame(gameAnimationId);
+      gameAnimationId = requestAnimationFrame(gameLoop);
+    }
+
+    function resetGame() {
+      notes = [];
+      particles = [];
+      lasers = [];
+
+      score = 0;
+      combo = 0;
+      maxCombo = 0;
+      life = 5;
+      hits = 0;
+      misses = 0;
+      gameOver = false;
+      gameRunning = false;
+      spawnInterval = 1450;
+      baseSpeed = 120;
+      startTime = performance.now();
+
+      updateHud();
+      document.getElementById('submitStatus').innerText = '';
+      document.getElementById('gameStatus').innerText = '已重新開始。按「開始遊戲」進入挑戰。';
+      drawStartScreen();
+    }
+
+    function stopMic() {
+      if (micAnimationId) cancelAnimationFrame(micAnimationId);
+      if (gameAnimationId) cancelAnimationFrame(gameAnimationId);
+
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      if (audioContext) {
+        audioContext.close();
+      }
+
+      stream = null;
+      audioContext = null;
+      analyser = null;
+      gameRunning = false;
+
+      document.getElementById('gameStatus').innerText = '麥克風已停止。';
+      document.getElementById('detectedText').innerText = '-';
+      document.getElementById('frequencyText').innerText = '尚未偵測';
+    }
+
+    function detectPitchLoop() {
+      if (!analyser || !buffer || !audioContext) return;
+
       analyser.getFloatTimeDomainData(buffer);
 
       const volume = getVolume(buffer);
       const volumePercent = Math.min(100, Math.round(volume * 300));
 
-      document.getElementById('meter').style.width = volumePercent + '%';
-      document.getElementById('volumeText').innerText = volumePercent + '%';
-
-      // 音量太小時不判斷，避免環境噪音亂跳
       if (volumePercent < 8) {
-        document.getElementById('detectedNote').innerText = '聲音太小';
-        document.getElementById('frequencyText').innerText = '0 Hz';
-        animationId = requestAnimationFrame(detectLoop);
+        detectedNote = '-';
+        detectedFrequency = 0;
+        document.getElementById('detectedText').innerText = '-';
+        document.getElementById('frequencyText').innerText = '聲音太小';
+        micAnimationId = requestAnimationFrame(detectPitchLoop);
         return;
       }
 
@@ -346,41 +438,39 @@
 
       if (pitch > 60 && pitch < 400) {
         const closest = getClosestOpenString(pitch);
-        const target = targets[currentIndex];
-        const cents = getCentsDifference(pitch, target.freq);
+        const cents = Math.abs(getCentsDifference(pitch, closest.freq));
 
-        document.getElementById('frequencyText').innerText = pitch.toFixed(1) + ' Hz';
+        detectedFrequency = pitch;
 
-        if (closest) {
-          document.getElementById('detectedNote').innerText =
-            closest.note + ' / ' + closest.freq.toFixed(2) + ' Hz';
-        }
+        if (cents <= 55) {
+          detectedNote = closest.note;
+          lastSoundTime = performance.now();
 
-        // 容許誤差：大約正負 45 cents
-        if (Math.abs(cents) <= 45) {
-          const now = Date.now();
+          document.getElementById('detectedText').innerText = closest.display;
+          document.getElementById('frequencyText').innerText =
+            closest.note + ' / ' + pitch.toFixed(1) + ' Hz';
 
-          // 避免同一個音持續響時一直加分
-          if (now - lastHitTime > 900) {
-            hitTarget();
-            lastHitTime = now;
-          }
+          tryHitBySound(closest.note);
+        } else {
+          detectedNote = '?';
+          document.getElementById('detectedText').innerText = '?';
+          document.getElementById('frequencyText').innerText = pitch.toFixed(1) + ' Hz';
         }
       } else {
-        document.getElementById('detectedNote').innerText = '尚未穩定偵測';
-        document.getElementById('frequencyText').innerText = '0 Hz';
+        detectedNote = '-';
+        detectedFrequency = 0;
+        document.getElementById('detectedText').innerText = '-';
+        document.getElementById('frequencyText').innerText = '尚未穩定偵測';
       }
 
-      animationId = requestAnimationFrame(detectLoop);
+      micAnimationId = requestAnimationFrame(detectPitchLoop);
     }
 
     function getVolume(input) {
       let sum = 0;
-
       for (let i = 0; i < input.length; i++) {
         sum += input[i] * input[i];
       }
-
       return Math.sqrt(sum / input.length);
     }
 
@@ -394,16 +484,13 @@
 
       rms = Math.sqrt(rms / size);
 
-      if (rms < 0.01) {
-        return -1;
-      }
+      if (rms < 0.01) return -1;
 
       let bestOffset = -1;
       let bestCorrelation = 0;
 
       const minFreq = 60;
       const maxFreq = 400;
-
       const minOffset = Math.floor(sampleRate / maxFreq);
       const maxOffset = Math.floor(sampleRate / minFreq);
 
@@ -422,20 +509,16 @@
         }
       }
 
-      if (bestOffset === -1) {
-        return -1;
-      }
-
+      if (bestOffset === -1) return -1;
       return sampleRate / bestOffset;
     }
 
     function getClosestOpenString(freq) {
-      let closest = null;
+      let closest = openStrings[0];
       let smallestDiff = Infinity;
 
-      allNotes.forEach(item => {
+      openStrings.forEach(item => {
         const diff = Math.abs(getCentsDifference(freq, item.freq));
-
         if (diff < smallestDiff) {
           smallestDiff = diff;
           closest = item;
@@ -449,150 +532,449 @@
       return 1200 * Math.log2(freq / targetFreq);
     }
 
-    function hitTarget() {
-      const target = targets[currentIndex];
+    function spawnNote() {
+      const item = openStrings[Math.floor(Math.random() * openStrings.length)];
+      const x = 70 + Math.random() * (W - 140);
 
-      score += 100 + combo * 10;
-      combo += 1;
+      notes.push({
+        id: Date.now() + Math.random(),
+        note: item.note,
+        display: item.display,
+        label: item.label,
+        x,
+        y: -40,
+        r: 28,
+        speed: baseSpeed + Math.random() * 40,
+        hit: false
+      });
+    }
 
-      document.getElementById('status').innerHTML =
-        '<span class="success">命中！你彈對了 ' + target.label + '</span>';
+    function tryHitBySound(noteName) {
+      if (!gameRunning || gameOver) return;
 
-      currentIndex += 1;
+      const now = performance.now();
 
-      if (currentIndex >= targets.length) {
-        currentIndex = 0;
-        document.getElementById('status').innerHTML =
-          '<span class="success">完成一輪空弦練習！繼續挑戰下一輪。</span>';
+      if (now - lastHitSoundTime < 260) return;
+
+      const hitLineY = H - 105;
+      const hitWindow = 95;
+
+      let targetIndex = -1;
+      let bestDistance = Infinity;
+
+      for (let i = 0; i < notes.length; i++) {
+        const n = notes[i];
+        if (n.hit) continue;
+        if (n.note !== noteName) continue;
+
+        const distance = Math.abs(n.y - hitLineY);
+
+        if (distance < hitWindow && distance < bestDistance) {
+          bestDistance = distance;
+          targetIndex = i;
+        }
       }
 
-      updateTarget();
-      updateScore();
+      if (targetIndex >= 0) {
+        const n = notes[targetIndex];
+        hitNote(n);
+        notes.splice(targetIndex, 1);
+        lastHitSoundTime = now;
+      }
     }
 
-    function updateTarget() {
-      const target = targets[currentIndex];
+    function hitNote(note) {
+      combo += 1;
+      hits += 1;
 
-      document.getElementById('targetNote').innerText = target.display;
-      document.getElementById('targetLabel').innerText = target.label;
+      if (combo > maxCombo) maxCombo = combo;
+
+      const bonus = Math.min(combo * 8, 160);
+      score += 100 + bonus;
+
+      createExplosion(note.x, note.y);
+      lasers.push({
+        x1: W / 2,
+        y1: H - 45,
+        x2: note.x,
+        y2: note.y,
+        life: 1
+      });
+
+      updateHud();
     }
 
-    function updateScore() {
+    function missNote() {
+      misses += 1;
+      combo = 0;
+      life -= 1;
+
+      if (life <= 0) {
+        life = 0;
+        endGame();
+      }
+
+      updateHud();
+    }
+
+    function endGame() {
+      gameRunning = false;
+      gameOver = true;
+      document.getElementById('gameStatus').innerText = '遊戲結束！可以送出成績，或重新開始。';
+    }
+
+    function createExplosion(x, y) {
+      for (let i = 0; i < 18; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 80 + Math.random() * 180;
+
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 1,
+          size: 3 + Math.random() * 4
+        });
+      }
+    }
+
+    function gameLoop(timestamp) {
+      const dt = 1 / 60;
+
+      updateGame(timestamp, dt);
+      drawGame();
+
+      if (gameRunning || particles.length > 0 || lasers.length > 0) {
+        gameAnimationId = requestAnimationFrame(gameLoop);
+      }
+    }
+
+    function updateGame(timestamp, dt) {
+      if (!gameRunning) {
+        updateEffects(dt);
+        return;
+      }
+
+      const elapsed = timestamp - startTime;
+
+      baseSpeed = 120 + elapsed / 1000 * 3;
+      spawnInterval = Math.max(650, 1450 - elapsed / 1000 * 18);
+
+      if (timestamp - lastSpawnTime > spawnInterval) {
+        spawnNote();
+        lastSpawnTime = timestamp;
+      }
+
+      const hitLineY = H - 105;
+
+      for (let i = notes.length - 1; i >= 0; i--) {
+        const n = notes[i];
+        n.y += n.speed * dt;
+
+        if (n.y > H + 45) {
+          notes.splice(i, 1);
+          missNote();
+        }
+      }
+
+      updateEffects(dt);
+    }
+
+    function updateEffects(dt) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 120 * dt;
+        p.life -= 1.8 * dt;
+
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+        }
+      }
+
+      for (let i = lasers.length - 1; i >= 0; i--) {
+        lasers[i].life -= 3 * dt;
+        if (lasers[i].life <= 0) {
+          lasers.splice(i, 1);
+        }
+      }
+    }
+
+    function drawStartScreen() {
+      ctx.clearRect(0, 0, W, H);
+      drawBackground();
+
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 30px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Guitar Shooter', W / 2, H / 2 - 30);
+
+      ctx.fillStyle = '#d1d5db';
+      ctx.font = '16px Arial';
+      ctx.fillText('啟動麥克風後，按開始遊戲', W / 2, H / 2 + 10);
+      ctx.fillText('音符靠近命中線時彈對空弦', W / 2, H / 2 + 38);
+    }
+
+    function drawGame() {
+      ctx.clearRect(0, 0, W, H);
+      drawBackground();
+
+      const hitLineY = H - 105;
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.95)';
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.moveTo(25, hitLineY);
+      ctx.lineTo(W - 25, hitLineY);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.18)';
+      ctx.fillRect(0, hitLineY - 55, W, 110);
+
+      notes.forEach(drawNote);
+      lasers.forEach(drawLaser);
+      particles.forEach(drawParticle);
+      drawPlayer();
+
+      if (gameOver) {
+        drawGameOver();
+      }
+    }
+
+    function drawBackground() {
+      const gradient = ctx.createLinearGradient(0, 0, 0, H);
+      gradient.addColorStop(0, '#111827');
+      gradient.addColorStop(1, '#020617');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.strokeStyle = 'rgba(96, 165, 250, 0.12)';
+      ctx.lineWidth = 1;
+
+      for (let i = 0; i < 6; i++) {
+        const x = (W / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(W / 2 + (x - W / 2) * 0.3, H);
+        ctx.stroke();
+      }
+
+      for (let y = 0; y < H; y += 46) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawNote(n) {
+      ctx.save();
+
+      ctx.shadowColor = '#60a5fa';
+      ctx.shadowBlur = 20;
+      ctx.fillStyle = '#2563eb';
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#bfdbfe';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 24px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(n.display, n.x, n.y);
+
+      ctx.font = '11px Arial';
+      ctx.fillStyle = '#dbeafe';
+      ctx.fillText(n.note, n.x, n.y + 32);
+
+      ctx.restore();
+    }
+
+    function drawPlayer() {
+      const x = W / 2;
+      const y = H - 45;
+
+      ctx.save();
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 20;
+
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.moveTo(x, y - 28);
+      ctx.lineTo(x - 28, y + 22);
+      ctx.lineTo(x + 28, y + 22);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#111827';
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('🎸', x, y + 9);
+
+      ctx.restore();
+    }
+
+    function drawParticle(p) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawLaser(laser) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, laser.life);
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#34d399';
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.moveTo(laser.x1, laser.y1);
+      ctx.lineTo(laser.x2, laser.y2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawGameOver() {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 34px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('GAME OVER', W / 2, H / 2 - 36);
+
+      ctx.fillStyle = 'white';
+      ctx.font = '18px Arial';
+      ctx.fillText('分數：' + score, W / 2, H / 2 + 6);
+      ctx.fillText('命中：' + hits + '　漏掉：' + misses, W / 2, H / 2 + 36);
+
+      ctx.restore();
+    }
+
+    function updateHud() {
       document.getElementById('scoreText').innerText = score;
       document.getElementById('comboText').innerText = combo;
+      document.getElementById('lifeText').innerText = life;
     }
 
-    function resetGame() {
-      score = 0;
-      combo = 0;
-      currentIndex = 0;
-      lastHitTime = 0;
-
-      updateTarget();
-      updateScore();
-
-      document.getElementById('status').innerText = '已重新開始，請從第 6 弦低音 E 開始。';
-      document.getElementById('detectedNote').innerText = '尚未偵測';
-      document.getElementById('frequencyText').innerText = '0 Hz';
-    }
-
-    function stopMic() {
-      if (animationId) {
-        cancelAnimationFrame(animationId);
-      }
-
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-
-      if (audioContext) {
-        audioContext.close();
-      }
-
-      document.getElementById('meter').style.width = '0%';
-      document.getElementById('volumeText').innerText = '0%';
-      document.getElementById('status').innerText = '麥克風已停止';
-    }
     function submitScore() {
-  if (score <= 0) {
-    document.getElementById('submitStatus').innerText = '目前還沒有分數，請先完成練習。';
-    return;
-  }
+      const saved = localStorage.getItem('guitarShooterStudent');
 
-  const name = prompt('請輸入學生姓名');
-  if (!name) return;
+      if (!saved) {
+        document.getElementById('submitStatus').innerText = '請先儲存學生資料。';
+        return;
+      }
 
-  const className = prompt('請輸入班級，例如：週六吉他班');
-  if (!className) return;
+      if (score <= 0) {
+        document.getElementById('submitStatus').innerText = '目前還沒有分數，請先開始遊戲。';
+        return;
+      }
 
-  const studentId = prompt('請輸入 Email 或學號');
-  if (!studentId) return;
+      const student = JSON.parse(saved);
+      const total = hits + misses;
+      const accuracy = total > 0 ? Math.round((hits / total) * 100) : 0;
 
-  document.getElementById('submitStatus').innerText = '成績送出中...';
+      document.getElementById('submitStatus').innerText = '成績送出中...';
 
-  jsonpRequest('saveScore', {
-    studentId: studentId,
-    name: name,
-    className: className,
-    level: '空弦音練習',
-    score: score,
-    accuracy: 100,
-    maxCombo: combo,
-    avgReactionTime: 0,
-    wrongNotes: ''
-  }, function(response) {
-    document.getElementById('submitStatus').innerText = '成績已送出到 Google Sheets！';
-  }, function(error) {
-    document.getElementById('submitStatus').innerText = '送出失敗：' + error;
-  });
-}
-
-function jsonpRequest(action, params, success, failure) {
-  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes('貼上')) {
-    failure('尚未設定 Apps Script 網址');
-    return;
-  }
-
-  const callbackName = 'callback_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
-
-  params.action = action;
-  params.callback = callbackName;
-
-  const query = Object.keys(params)
-    .map(function(key) {
-      return encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
-    })
-    .join('&');
-
-  const script = document.createElement('script');
-  script.src = APPS_SCRIPT_URL + '?' + query;
-
-  const timer = setTimeout(function() {
-    cleanup();
-    failure('連線逾時');
-  }, 10000);
-
-  window[callbackName] = function(data) {
-    cleanup();
-    success(data);
-  };
-
-  script.onerror = function() {
-    cleanup();
-    failure('無法連接 Apps Script');
-  };
-
-  function cleanup() {
-    clearTimeout(timer);
-    delete window[callbackName];
-
-    if (script.parentNode) {
-      script.parentNode.removeChild(script);
+      jsonpRequest('saveScore', {
+        studentId: student.studentId,
+        name: student.name,
+        className: student.className,
+        level: 'Guitar Shooter 空弦挑戰',
+        score: score,
+        accuracy: accuracy,
+        maxCombo: maxCombo,
+        avgReactionTime: 0,
+        wrongNotes: 'misses:' + misses
+      }, function(response) {
+        document.getElementById('submitStatus').innerText = '成績已送出到 Google Sheets！';
+      }, function(error) {
+        document.getElementById('submitStatus').innerText = '送出失敗：' + error;
+      });
     }
-  }
 
-  document.body.appendChild(script);
-}
+    function jsonpRequest(action, params, success, failure) {
+      if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes('請貼上')) {
+        failure('尚未設定 Apps Script 網址');
+        return;
+      }
+
+      const callbackName = 'callback_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+
+      params.action = action;
+      params.callback = callbackName;
+
+      const query = Object.keys(params)
+        .map(function(key) {
+          return encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
+        })
+        .join('&');
+
+      const script = document.createElement('script');
+      script.src = APPS_SCRIPT_URL + '?' + query;
+
+      const timer = setTimeout(function() {
+        cleanup();
+        failure('連線逾時');
+      }, 10000);
+
+      window[callbackName] = function(data) {
+        cleanup();
+        success(data);
+      };
+
+      script.onerror = function() {
+        cleanup();
+        failure('無法連接 Apps Script');
+      };
+
+      function cleanup() {
+        clearTimeout(timer);
+        delete window[callbackName];
+
+        if (script.parentNode) {
+          script.parentNode.removeChild(script);
+        }
+      }
+
+      document.body.appendChild(script);
+    }
+
+    document.addEventListener('keydown', function(event) {
+      const key = event.key.toUpperCase();
+
+      const map = {
+        'E': ['E2', 'E4'],
+        'A': ['A2'],
+        'D': ['D3'],
+        'G': ['G3'],
+        'B': ['B3']
+      };
+
+      if (!map[key]) return;
+
+      const possibleNotes = map[key];
+
+      for (let i = 0; i < possibleNotes.length; i++) {
+        tryHitBySound(possibleNotes[i]);
+      }
+    });
   </script>
 </body>
 </html>
