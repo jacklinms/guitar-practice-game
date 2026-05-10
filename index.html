@@ -328,11 +328,11 @@
       <button class="red" onclick="stopMic()">停止麥克風</button>
 
       <div class="debug-panel" id="debugText">
-除錯資訊會顯示在這裡。啟動麥克風後，請彈低音 E、講話、拍手測試，看音量 / attack / pitch / target match 的變化。
+除錯資訊會顯示在這裡。啟動麥克風後，請彈低音 E、B 弦、講話、拍手測試，看音量 / attack / pitch / target match 的變化。
       </div>
 
       <p class="hint">
-        這版加入採樣率與偵測除錯資訊。若低音 E 沒命中，請觀察「pitch 是否抓到」、「target match 是否 OK」、「attack 是否 OK」。
+        這版針對第 2 弦 B 做放寬：若 B 的音高吻合，即使 attack 顯示 NO，也可用 sustained 判斷命中。
       </p>
     </div>
   </div>
@@ -382,40 +382,26 @@
     let nextNoteIndex = 0;
 
     const MIC_SETTINGS = {
-      // 可調參數集中放這裡
       fftSize: 8192,
 
-      // 音量顯示倍率。越大越敏感，但也越容易吃到雜音
       volumeScale: 760,
-
-      // 小於這個音量，直接視為太小聲
       volumeGate: 4,
-
-      // 要達到這個音量以上，才可能算撥弦 attack
-      minAttackVolume: 8,
-
-      // 音高分析最低能量。低一點比較容易抓低音，高一點比較抗雜音
+      minAttackVolume: 7,
       pitchRmsGate: 0.0035,
 
-      // 目標音容許誤差，單位 cents
       centsTolerance: 72,
-
-      // 命中冷卻，避免同一聲殘響連續命中
       hitCooldown: 170,
-
-      // 音符進入這個範圍才會被當成目前目標
       targetZone: 210,
 
-      // 音量瞬間上升門檻
-      attackGate: 2,
+      attackGate: 1,
+      attackHoldMs: 520,
 
-      // 撥弦後保留判斷時間
-      attackHoldMs: 360,
-
-      // 如果 target match 很準，可以不強制 attack，避免低音 E 因 attack 不明顯而漏掉
       allowSustainedTargetMatch: true,
-      sustainedMinVolume: 10,
-      sustainedCentsTolerance: 45
+      sustainedMinVolume: 6,
+      sustainedCentsTolerance: 65,
+
+      bStringRelaxedMinVolume: 5,
+      bStringRelaxedCentsTolerance: 80
     };
 
     const openStrings = [
@@ -733,17 +719,23 @@
           targetMatch = isPitchMatchingTarget(pitch, targetInfo.note.data);
 
           const canHit = now - lastHitSoundTime >= MIC_SETTINGS.hitCooldown;
+          const isBString = targetInfo.note.data.note === 'B3';
 
           const sustainedAllowed =
             MIC_SETTINGS.allowSustainedTargetMatch &&
             volumePercent >= MIC_SETTINGS.sustainedMinVolume &&
             targetMatch.cents <= MIC_SETTINGS.sustainedCentsTolerance;
 
+          const bStringRelaxedAllowed =
+            isBString &&
+            volumePercent >= MIC_SETTINGS.bStringRelaxedMinVolume &&
+            targetMatch.cents <= MIC_SETTINGS.bStringRelaxedCentsTolerance;
+
           const acceptedByAttack = targetMatch.matched && hasRecentAttack;
-          const acceptedBySustain = targetMatch.matched && sustainedAllowed;
+          const acceptedBySustain = targetMatch.matched && (sustainedAllowed || bStringRelaxedAllowed);
 
           if (targetMatch.matched && canHit && (acceptedByAttack || acceptedBySustain)) {
-            hitDecision = acceptedByAttack ? 'HIT attack' : 'HIT sustained';
+            hitDecision = acceptedByAttack ? 'HIT attack' : (bStringRelaxedAllowed ? 'HIT B relaxed' : 'HIT sustained');
             hitNote(targetInfo.note);
             notes.splice(targetInfo.index, 1);
             lastHitSoundTime = now;
@@ -754,7 +746,8 @@
               'match=' + (targetMatch.matched ? 'OK' : 'NO') +
               ' cents=' + Math.round(targetMatch.cents) +
               ' attack=' + (hasRecentAttack ? 'OK' : 'NO') +
-              ' sustain=' + (sustainedAllowed ? 'OK' : 'NO');
+              ' sustain=' + (sustainedAllowed ? 'OK' : 'NO') +
+              ' Brelax=' + (bStringRelaxedAllowed ? 'OK' : 'NO');
           }
         }
       } else {
@@ -820,8 +813,7 @@
         'target match: ' + matchText + '\n' +
         'recent attack: ' + (info.hasRecentAttack ? 'OK' : 'NO') + '\n' +
         'decision: ' + info.hitDecision + '\n' +
-        '\n如果低音 E 沒中：看 pitch 是否落在 82 / 165 / 330 附近。\n' +
-        '如果講話誤觸：看 target match 是否 OK，以及 recent attack 是否 OK。';
+        '\nB 弦若 attack NO 但 target match OK，應該會出現 HIT B relaxed。';
     }
 
     function getVolume(input) {
