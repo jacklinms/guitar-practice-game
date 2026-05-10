@@ -14,7 +14,7 @@
     }
 
     .container {
-      max-width: 820px;
+      max-width: 860px;
       margin: 0 auto;
       padding: 18px;
     }
@@ -151,11 +151,12 @@
     }
 
     .hud-value {
-      font-size: 20px;
+      font-size: 19px;
       font-weight: bold;
       color: #fbbf24;
       margin-top: 4px;
       line-height: 1.2;
+      word-break: break-word;
     }
 
     .status {
@@ -171,7 +172,7 @@
     }
 
     .detected {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: bold;
       color: #a7f3d0;
       margin-top: 8px;
@@ -205,6 +206,19 @@
       font-size: 13px;
       color: white;
       font-weight: bold;
+    }
+
+    .debug-panel {
+      background: #020617;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 12px;
+      margin-top: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      line-height: 1.5;
     }
 
     @media (max-width: 700px) {
@@ -282,6 +296,26 @@
           <div class="hud-title">目前目標</div>
           <div class="hud-value" id="targetText">等待中</div>
         </div>
+        <div class="hud-box">
+          <div class="hud-title">採樣率</div>
+          <div class="hud-value" id="sampleRateText">-</div>
+        </div>
+        <div class="hud-box">
+          <div class="hud-title">FFT</div>
+          <div class="hud-value" id="fftText">-</div>
+        </div>
+        <div class="hud-box">
+          <div class="hud-title">分析窗</div>
+          <div class="hud-value" id="bufferMsText">-</div>
+        </div>
+        <div class="hud-box">
+          <div class="hud-title">音量</div>
+          <div class="hud-value" id="volumeText">-</div>
+        </div>
+        <div class="hud-box">
+          <div class="hud-title">Attack</div>
+          <div class="hud-value" id="attackText">-</div>
+        </div>
       </div>
 
       <div class="detected" id="frequencyText">尚未偵測</div>
@@ -293,9 +327,12 @@
       <button class="blue" onclick="resetGame()">重新開始</button>
       <button class="red" onclick="stopMic()">停止麥克風</button>
 
+      <div class="debug-panel" id="debugText">
+除錯資訊會顯示在這裡。啟動麥克風後，請彈低音 E、講話、拍手測試，看音量 / attack / pitch / target match 的變化。
+      </div>
+
       <p class="hint">
-        小提示：這版改成「目標音限定偵測」，只有命中區附近那顆音符才會被判定。
-        低音 E 與高音 E 已經用不同顏色與文字標示。若要用鍵盤測試，也可以按 E / A / D / G / B。
+        這版加入採樣率與偵測除錯資訊。若低音 E 沒命中，請觀察「pitch 是否抓到」、「target match 是否 OK」、「attack 是否 OK」。
       </p>
     </div>
   </div>
@@ -322,6 +359,7 @@
     let lastHitSoundTime = 0;
     let lastVolumePercent = 0;
     let lastAttackTime = 0;
+    let lastDebugUpdate = 0;
 
     let notes = [];
     let particles = [];
@@ -341,18 +379,43 @@
     let baseSpeed = 50;
     let startTime = 0;
     let autoSubmitted = false;
+    let nextNoteIndex = 0;
 
     const MIC_SETTINGS = {
+      // 可調參數集中放這裡
+      fftSize: 8192,
+
+      // 音量顯示倍率。越大越敏感，但也越容易吃到雜音
       volumeScale: 760,
+
+      // 小於這個音量，直接視為太小聲
       volumeGate: 4,
+
+      // 要達到這個音量以上，才可能算撥弦 attack
       minAttackVolume: 8,
+
+      // 音高分析最低能量。低一點比較容易抓低音，高一點比較抗雜音
       pitchRmsGate: 0.0035,
-      centsTolerance: 70,
+
+      // 目標音容許誤差，單位 cents
+      centsTolerance: 72,
+
+      // 命中冷卻，避免同一聲殘響連續命中
       hitCooldown: 170,
-      hitWindow: 170,
-      targetZone: 200,
+
+      // 音符進入這個範圍才會被當成目前目標
+      targetZone: 210,
+
+      // 音量瞬間上升門檻
       attackGate: 2,
-      attackHoldMs: 320
+
+      // 撥弦後保留判斷時間
+      attackHoldMs: 360,
+
+      // 如果 target match 很準，可以不強制 attack，避免低音 E 因 attack 不明顯而漏掉
+      allowSustainedTargetMatch: true,
+      sustainedMinVolume: 10,
+      sustainedCentsTolerance: 45
     };
 
     const openStrings = [
@@ -526,12 +589,18 @@
         }
 
         analyser = audioContext.createAnalyser();
-        analyser.fftSize = 8192;
+        analyser.fftSize = MIC_SETTINGS.fftSize;
 
         microphone = audioContext.createMediaStreamSource(stream);
         microphone.connect(analyser);
 
         buffer = new Float32Array(analyser.fftSize);
+
+        const bufferMs = Math.round((analyser.fftSize / audioContext.sampleRate) * 1000);
+
+        document.getElementById('sampleRateText').innerText = audioContext.sampleRate + ' Hz';
+        document.getElementById('fftText').innerText = analyser.fftSize;
+        document.getElementById('bufferMsText').innerText = bufferMs + ' ms';
 
         status.innerText = '麥克風已啟動，可以開始遊戲。';
         detectPitchLoop();
@@ -552,9 +621,9 @@
       gameOver = false;
       autoSubmitted = false;
       startTime = performance.now();
-      lastSpawnTime = performance.now();
+      lastSpawnTime = performance.now() - 900;
 
-      document.getElementById('gameStatus').innerText = '遊戲開始！音符靠近命中線時請彈對應空弦。';
+      document.getElementById('gameStatus').innerText = '遊戲開始！第一顆會是紅色低音 E。';
       playSfx('gameStart');
 
       if (gameAnimationId) cancelAnimationFrame(gameAnimationId);
@@ -582,6 +651,7 @@
       lastHitSoundTime = 0;
       lastVolumePercent = 0;
       lastAttackTime = 0;
+      nextNoteIndex = 0;
 
       updateHud();
       document.getElementById('submitStatus').innerText = '';
@@ -613,6 +683,8 @@
       document.getElementById('detectedText').innerText = '-';
       document.getElementById('frequencyText').innerText = '尚未偵測';
       document.getElementById('targetText').innerText = '等待中';
+      document.getElementById('volumeText').innerText = '-';
+      document.getElementById('attackText').innerText = '-';
     }
 
     function detectPitchLoop() {
@@ -636,47 +708,120 @@
         lastAttackTime = now;
       }
 
-      if (volumePercent < MIC_SETTINGS.volumeGate) {
-        detectedNote = '-';
-        detectedFrequency = 0;
-        document.getElementById('detectedText').innerText = '-';
-        document.getElementById('frequencyText').innerText = '聲音太小';
-        lastVolumePercent = volumePercent;
-        micAnimationId = requestAnimationFrame(detectPitchLoop);
-        return;
+      let pitch = -1;
+      let closest = null;
+      let targetMatch = null;
+      let hasRecentAttack = now - lastAttackTime <= MIC_SETTINGS.attackHoldMs;
+      let hitDecision = 'NO TARGET';
+
+      if (volumePercent >= MIC_SETTINGS.volumeGate) {
+        pitch = autoCorrelate(buffer, audioContext.sampleRate);
       }
 
-      const pitch = autoCorrelate(buffer, audioContext.sampleRate);
-
-      if (pitch > 60 && pitch < 420) {
-        const closest = getClosestOpenString(pitch);
+      if (pitch > 55 && pitch < 430) {
+        closest = getClosestPrimaryString(pitch);
         detectedFrequency = pitch;
 
         if (closest) {
+          detectedNote = closest.note;
           document.getElementById('detectedText').innerText = closest.shortLabel;
           document.getElementById('frequencyText').innerText =
-            closest.note + ' / ' + pitch.toFixed(1) + ' Hz';
+            closest.shortLabel + ' / ' + pitch.toFixed(1) + ' Hz';
         }
 
         if (targetInfo) {
-          const match = isPitchMatchingTarget(pitch, targetInfo.note.data);
-          const hasRecentAttack = now - lastAttackTime <= MIC_SETTINGS.attackHoldMs;
+          targetMatch = isPitchMatchingTarget(pitch, targetInfo.note.data);
+
           const canHit = now - lastHitSoundTime >= MIC_SETTINGS.hitCooldown;
 
-          if (match.matched && hasRecentAttack && canHit) {
+          const sustainedAllowed =
+            MIC_SETTINGS.allowSustainedTargetMatch &&
+            volumePercent >= MIC_SETTINGS.sustainedMinVolume &&
+            targetMatch.cents <= MIC_SETTINGS.sustainedCentsTolerance;
+
+          const acceptedByAttack = targetMatch.matched && hasRecentAttack;
+          const acceptedBySustain = targetMatch.matched && sustainedAllowed;
+
+          if (targetMatch.matched && canHit && (acceptedByAttack || acceptedBySustain)) {
+            hitDecision = acceptedByAttack ? 'HIT attack' : 'HIT sustained';
             hitNote(targetInfo.note);
             notes.splice(targetInfo.index, 1);
             lastHitSoundTime = now;
             lastAttackTime = 0;
+          } else {
+            hitDecision =
+              'WAIT ' +
+              'match=' + (targetMatch.matched ? 'OK' : 'NO') +
+              ' cents=' + Math.round(targetMatch.cents) +
+              ' attack=' + (hasRecentAttack ? 'OK' : 'NO') +
+              ' sustain=' + (sustainedAllowed ? 'OK' : 'NO');
           }
         }
       } else {
+        detectedNote = '-';
+        detectedFrequency = 0;
         document.getElementById('detectedText').innerText = '-';
-        document.getElementById('frequencyText').innerText = '尚未穩定偵測';
+
+        if (volumePercent < MIC_SETTINGS.volumeGate) {
+          document.getElementById('frequencyText').innerText = '聲音太小';
+          hitDecision = 'VOLUME LOW';
+        } else {
+          document.getElementById('frequencyText').innerText = '尚未穩定偵測';
+          hitDecision = 'NO PITCH';
+        }
+      }
+
+      document.getElementById('volumeText').innerText = volumePercent;
+      document.getElementById('attackText').innerText = hasRecentAttack ? 'OK' : 'NO';
+
+      if (now - lastDebugUpdate > 120) {
+        updateDebugPanel({
+          sampleRate: audioContext.sampleRate,
+          fftSize: analyser.fftSize,
+          bufferMs: Math.round((analyser.fftSize / audioContext.sampleRate) * 1000),
+          volumePercent,
+          volumeDelta,
+          pitch,
+          closest,
+          targetInfo,
+          targetMatch,
+          hasRecentAttack,
+          hitDecision
+        });
+        lastDebugUpdate = now;
       }
 
       lastVolumePercent = volumePercent;
       micAnimationId = requestAnimationFrame(detectPitchLoop);
+    }
+
+    function updateDebugPanel(info) {
+      const targetName = info.targetInfo
+        ? info.targetInfo.note.data.shortLabel + ' ' + info.targetInfo.note.data.stringName
+        : '無';
+
+      const closestName = info.closest
+        ? info.closest.shortLabel + ' ' + info.closest.stringName
+        : '無';
+
+      const matchText = info.targetMatch
+        ? (info.targetMatch.matched ? 'OK' : 'NO') + ' / cents ' + Math.round(info.targetMatch.cents)
+        : '無目標';
+
+      document.getElementById('debugText').innerText =
+        'sampleRate: ' + info.sampleRate + ' Hz\n' +
+        'fftSize: ' + info.fftSize + '\n' +
+        'buffer window: ' + info.bufferMs + ' ms\n' +
+        'volume: ' + info.volumePercent + '\n' +
+        'volumeDelta: ' + info.volumeDelta + '\n' +
+        'pitch: ' + (info.pitch > 0 ? info.pitch.toFixed(1) + ' Hz' : 'none') + '\n' +
+        'closest primary note: ' + closestName + '\n' +
+        'current target: ' + targetName + '\n' +
+        'target match: ' + matchText + '\n' +
+        'recent attack: ' + (info.hasRecentAttack ? 'OK' : 'NO') + '\n' +
+        'decision: ' + info.hitDecision + '\n' +
+        '\n如果低音 E 沒中：看 pitch 是否落在 82 / 165 / 330 附近。\n' +
+        '如果講話誤觸：看 target match 是否 OK，以及 recent attack 是否 OK。';
     }
 
     function getVolume(input) {
@@ -701,8 +846,8 @@
       let bestOffset = -1;
       let bestCorrelation = 0;
 
-      const minFreq = 60;
-      const maxFreq = 420;
+      const minFreq = 55;
+      const maxFreq = 430;
       const minOffset = Math.floor(sampleRate / maxFreq);
       const maxOffset = Math.floor(sampleRate / minFreq);
 
@@ -725,18 +870,16 @@
       return sampleRate / bestOffset;
     }
 
-    function getClosestOpenString(freq) {
+    function getClosestPrimaryString(freq) {
       let closest = null;
       let smallestCents = Infinity;
 
       openStrings.forEach(item => {
-        item.altFreqs.forEach(f => {
-          const diff = Math.abs(getCentsDifference(freq, f));
-          if (diff < smallestCents) {
-            smallestCents = diff;
-            closest = item;
-          }
-        });
+        const diff = Math.abs(getCentsDifference(freq, item.freq));
+        if (diff < smallestCents) {
+          smallestCents = diff;
+          closest = item;
+        }
       });
 
       return closest;
@@ -748,20 +891,27 @@
 
     function isPitchMatchingTarget(freq, data) {
       let bestCents = Infinity;
+      let bestFreq = null;
 
       for (const f of data.altFreqs) {
         const cents = Math.abs(getCentsDifference(freq, f));
-        if (cents < bestCents) bestCents = cents;
+        if (cents < bestCents) {
+          bestCents = cents;
+          bestFreq = f;
+        }
       }
 
       return {
         matched: bestCents <= MIC_SETTINGS.centsTolerance,
-        cents: bestCents
+        cents: bestCents,
+        matchedFreq: bestFreq
       };
     }
 
     function spawnNote() {
-      const item = openStrings[Math.floor(Math.random() * openStrings.length)];
+      const item = openStrings[nextNoteIndex % openStrings.length];
+      nextNoteIndex += 1;
+
       const x = 70 + Math.random() * (W - 140);
 
       notes.push({
@@ -800,13 +950,30 @@
       };
     }
 
+    function getUpcomingNote() {
+      if (!notes.length) return null;
+
+      let best = notes[0];
+      for (let i = 1; i < notes.length; i++) {
+        if (notes[i].y > best.y) {
+          best = notes[i];
+        }
+      }
+      return best;
+    }
+
     function updateTargetHud(targetInfo) {
-      if (!targetInfo) {
-        document.getElementById('targetText').innerText = '等待中';
+      if (targetInfo) {
+        document.getElementById('targetText').innerText = targetInfo.note.data.shortLabel;
         return;
       }
 
-      document.getElementById('targetText').innerText = targetInfo.note.data.shortLabel;
+      const upcoming = getUpcomingNote();
+      if (upcoming) {
+        document.getElementById('targetText').innerText = '下一顆 ' + upcoming.data.shortLabel;
+      } else {
+        document.getElementById('targetText').innerText = '等待中';
+      }
     }
 
     function hitNote(note) {
@@ -952,7 +1119,7 @@
       ctx.fillStyle = '#d1d5db';
       ctx.font = '16px Arial';
       ctx.fillText('啟動麥克風後，按開始遊戲', W / 2, H / 2 + 6);
-      ctx.fillText('低音 E 和高音 E 已經分色標示', W / 2, H / 2 + 34);
+      ctx.fillText('第一顆一定是紅色低音 E', W / 2, H / 2 + 34);
     }
 
     function drawGame() {
@@ -973,7 +1140,7 @@
       ctx.restore();
 
       ctx.fillStyle = 'rgba(251, 191, 36, 0.18)';
-      ctx.fillRect(0, hitLineY - 75, W, 150);
+      ctx.fillRect(0, hitLineY - MIC_SETTINGS.targetZone / 2, W, MIC_SETTINGS.targetZone);
 
       const targetInfo = getPriorityTarget();
       if (targetInfo) {
@@ -1048,11 +1215,11 @@
       ctx.textBaseline = 'middle';
       ctx.fillText(data.display, n.x, n.y - 2);
 
-      drawMiniTag(n.x, n.y + 28, data.tag, data.color, true);
+      drawMiniTag(n.x, n.y + 28, data.tag, data.color);
       ctx.restore();
     }
 
-    function drawMiniTag(x, y, text, bg, darkText = false) {
+    function drawMiniTag(x, y, text, bg) {
       ctx.save();
       ctx.font = 'bold 10px Arial';
       const width = Math.max(52, ctx.measureText(text).width + 14);
@@ -1064,8 +1231,7 @@
       ctx.fillStyle = bg;
       ctx.fill();
 
-      ctx.fillStyle = darkText ? '#ffffff' : '#111827';
-      if (bg === '#eab308') ctx.fillStyle = '#111827';
+      ctx.fillStyle = bg === '#eab308' ? '#111827' : '#ffffff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(text, x, y + 0.5);
@@ -1082,7 +1248,7 @@
       ctx.fillStyle = data.color;
       ctx.fill();
 
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = data.color === '#eab308' ? '#111827' : '#ffffff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(text, W / 2, 35);
@@ -1208,7 +1374,7 @@
       document.getElementById('submitStatus').innerText =
         isAuto ? '遊戲結束，自動送出成績中...' : '成績送出中...';
 
-      jsonpRequest('saveScore', {
+      sendScoreToAppsScript({
         studentId: student.studentId,
         name: student.name,
         className: student.className,
@@ -1228,16 +1394,8 @@
       });
     }
 
-    function jsonpRequest(action, params, success, failure) {
-      if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes('請貼上')) {
-        failure('尚未設定 Apps Script 網址');
-        return;
-      }
-
-      const callbackName = 'callback_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
-
-      params.action = action;
-      params.callback = callbackName;
+    function sendScoreToAppsScript(params, success, failure) {
+      params.action = 'saveScore';
 
       const query = Object.keys(params)
         .map(function(key) {
@@ -1245,33 +1403,19 @@
         })
         .join('&');
 
-      const script = document.createElement('script');
-      script.src = APPS_SCRIPT_URL + '?' + query;
+      const url = APPS_SCRIPT_URL + '?' + query;
 
-      const timer = setTimeout(function() {
-        cleanup();
-        failure('連線逾時');
-      }, 10000);
-
-      window[callbackName] = function(data) {
-        cleanup();
-        success(data);
-      };
-
-      script.onerror = function() {
-        cleanup();
-        failure('無法連接 Apps Script');
-      };
-
-      function cleanup() {
-        clearTimeout(timer);
-        delete window[callbackName];
-        if (script.parentNode) {
-          script.parentNode.removeChild(script);
-        }
-      }
-
-      document.body.appendChild(script);
+      fetch(url, {
+        method: 'GET',
+        mode: 'no-cors',
+        keepalive: true
+      })
+      .then(function() {
+        success();
+      })
+      .catch(function(error) {
+        failure(error.message || '無法送出');
+      });
     }
 
     function playSfx(type) {
@@ -1318,14 +1462,18 @@
         const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = tempCtx.createOscillator();
         const gain = tempCtx.createGain();
+
         osc.type = 'sine';
         osc.frequency.value = 560;
         gain.gain.value = 0.02;
+
         osc.connect(gain);
         gain.connect(tempCtx.destination);
+
         osc.start();
         gain.gain.exponentialRampToValueAtTime(0.0001, tempCtx.currentTime + 0.08);
         osc.stop(tempCtx.currentTime + 0.09);
+
         setTimeout(() => tempCtx.close(), 120);
       } catch (e) {}
     }
